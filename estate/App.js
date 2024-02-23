@@ -1,55 +1,52 @@
-// Your React Native component
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import PropertyDisplayScreen from './screens/PropertyDisplayScreen';
+import PropertyDetailScreen from './screens/PropertyDetailScreen';
+import LoginScreen from './screens/LoginScreen';
+import SearchScreen from './screens/SearchScreen';
+import Favorites from './screens/Favorites';
+import AccountScreen from './screens/AccountScreen';
+import UserRegistrationForm from './screens/UserRegistrationForm';
+import UploadPropertyScreen from './screens/UploadPropertyScreen';
+import UploadBuildingScreen from './screens/UploadBuildingScreen';
+import UploadLandScreen from './screens/UploadLandScreen';
+import { AuthProvider } from './contexts/AuthContext';
 
-import React, { useEffect } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import axios from 'axios';
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-const YourComponent = () => {
-  useEffect(() => {
-    // GET request
-    axios.get('http://192.168.43.179:8000/categories/')
-      .then(response => {
-        console.log('Properties:', response.data);
-        // Handle the properties data in your component state
-      })
-      .catch(error => {
-        console.error('Error fetching properties:', error);
-      });
-
-    // POST request (assuming you have property data to send)
-    const newProperty = 
-    
-      {
-          "name": "three bedroom'"
-      }
-  
-
-    axios.post('http://192.168.43.179:8000/categories/', newProperty)
-      .then(response => {
-        console.log('New Property created:', response.data);
-        // Handle the newly created property data in your component state
-      })
-      .catch(error => {
-        console.error('Error creating property:', error);
-      });
-  }, []); // Empty dependency array ensures the effect runs only once on mount
-
+const MainStack = () => {
   return (
-    <View>
-      <Text>Your Component</Text>
-      {/* Render your component content here */}
-    </View>
+    <AuthProvider>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={PropertyDisplayScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="PropertyDetail" component={PropertyDetailScreen} options={{ headerShown: true }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: true }} />
+        <Stack.Screen name="UserRegistrationForm" component={UserRegistrationForm} options={{ headerShown: true }} />
+        <Stack.Screen name="UploadProperty" component={UploadPropertyScreen} options={{ headerShown: true }} />
+        <Stack.Screen name="UploadBuilding" component={UploadBuildingScreen} options={{ headerShown: true }} />
+        <Stack.Screen name="UploadLand" component={UploadLandScreen} options={{ headerShown: true }} />
+      </Stack.Navigator>
+    </AuthProvider>
   );
 };
 
-export default YourComponent;
 
+const App = () => {
+  return (
+    <NavigationContainer>
+      <AuthProvider>
+      <Tab.Navigator>
+        <Tab.Screen name="Properties" component={MainStack} />
+        <Tab.Screen name="Search" component={SearchScreen} />
+        <Tab.Screen name="Favorites" component={Favorites} />
+        <Tab.Screen name="Account" component={AccountScreen} />
+      </Tab.Navigator>
+      </AuthProvider>
+    </NavigationContainer>
+  );
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
