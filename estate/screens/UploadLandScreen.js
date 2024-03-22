@@ -1,70 +1,108 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, Text, Button, Alert, TextInput, View, StyleSheet } from 'react-native';
+import { ScrollView, Text, Button, Alert, TextInput, View, StyleSheet, Image } from 'react-native';
 import axios from 'axios';
+import * as ImagePicker from 'expo-image-picker';
+import countriesList from '../components/Countries';
+import { Picker } from '@react-native-picker/picker';
+import { useForm, Controller } from 'react-hook-form';
 
 const UploadLandScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [ownerId, setOwnerId] = useState(null);
+  const [landImages, setLandImages] = useState([]);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm(); 
 
   // Fetch the logged-in user's information when the component mounts
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        // Make a request to your authentication system to get the user information
-        // Modify this URL to match your authentication endpoint
         const userInfoResponse = await axios.get('http://192.168.43.179:8000/api/user/');
-
-        // Set the owner ID based on the retrieved user information
-        console.log(userInfoResponse.data.id)
         setOwnerId(userInfoResponse.data.id);
       } catch (error) {
         console.error('Error fetching user information:', error.message);
       }
     };
 
-    // Call the function to fetch user information
     fetchUserInfo();
   }, []);
 
-  const handleUpload = async () => {
+  const handleImagePicker = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+      allowsMultipleSelection: true, // Allow multiple image selection
+    });
+
+    if (!result.cancelled) {
+      const selectedImages = result.assets.map((asset) => {
+        const fileName = asset.uri.split('/').pop();
+        return {
+          uri: asset.uri,
+          type: 'image/jpeg', 
+          name: fileName,
+        };
+      });
+
+      setLandImages([...landImages, ...selectedImages]);
+    }
+  };
+
+  const handleUpload = handleSubmit(async (formData) => {
     try {
-      // Fetch CSRF token
       const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
       const csrfToken = csrfResponse.data.csrf_token;
 
-      // Create a JSON object with the form data, including the owner ID
-      const formData = {
-        name,
-        price,
-        description,
-        owner: ownerId,
-      };
+      // Create a FormData object
+      const uploadFormData = new FormData();
 
-      // Make the API request to upload the land
-      const response = await axios.post('http://192.168.43.179:8000/api/upload/land/', formData, {
+      uploadFormData.append('name', name);
+      uploadFormData.append('price', price);
+      uploadFormData.append('description', description);
+      uploadFormData.append('owner', ownerId);
+      uploadFormData.append('country', formData.country);
+
+      landImages.forEach((image, index) => {
+        uploadFormData.append(`image${index}`, {
+          uri: image.uri,
+          type: 'image/jpeg',
+          name: image.uri.split('/').pop(),
+        });
+      });
+
+      const response = await axios.post('http://192.168.43.179:8000/api/upload/land/', uploadFormData, {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
           'X-CSRFToken': csrfToken,
         },
       });
 
-      // Handle success or navigate back as needed
       console.log('Land uploaded successfully:', response.data);
-      // navigation.goBack();
+      Alert.alert('Land Uploaded Successfully');
+      navigation.goBack();
     } catch (error) {
-      // Log the error response
       console.error('Error uploading land:', error.message, error.response?.data);
 
-      // Display the error details if available
       if (error.response?.data && error.response.data.details) {
         Alert.alert('Error', JSON.stringify(error.response.data.details, null, 2));
       } else {
         Alert.alert('Error', 'An unexpected error occurred. Please try again.');
       }
     }
-  };
+  });
 
   return (
     <ScrollView style={styles.container}>
@@ -98,6 +136,39 @@ const UploadLandScreen = ({ navigation }) => {
         />
       </View>
 
+      <View style={styles.fieldContainer}>
+        <Text style={styles.label}>Country</Text> 
+        <Controller
+          control={control}
+          render={({ field }) => (
+            <Picker
+              selectedValue={field.value}
+              onValueChange={(itemValue) => field.onChange(itemValue)}
+              style={{ 
+                height: 40, 
+                flex: 1, 
+                marginLeft: 10, 
+                backgroundColor: '#fafafa' }}
+            >
+              {countriesList.map((country) => (
+                <Picker.Item key={country} label={country} value={country} />
+              ))}
+            </Picker>
+          )}
+          name="country"
+        />
+      </View>
+
+      <View style={styles.imageContainer}>
+        <Button title="Choose Land Image" onPress={handleImagePicker} />
+        {landImages.map((image, index) => (
+          <View key={index} style={styles.previewContainer}>
+            <Text>Selected Land Image {index + 1}:</Text>
+            <Image source={{ uri: image.uri }} style={styles.previewImage} />
+          </View>
+        ))}
+      </View>
+
       <View style={styles.buttonContainer}>
         <Button title="Upload Land" onPress={handleUpload} />
       </View>
@@ -108,19 +179,38 @@ const UploadLandScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 10, 
   },
   fieldContainer: {
     marginBottom: 15,
+    flexDirection: 'row',
+    alignItems: 'center', 
+  },
+  label: {
+    fontSize: 16,
+    flexShrink: 1, 
+    maxWidth: '40%', 
   },
   textInput: {
     height: 40,
     borderColor: 'gray',
     borderWidth: 1,
     padding: 10,
+    flex: 1,
+    marginLeft: 10, 
   },
-  label: {
-    fontSize: 16,
+  imageContainer: {
+    marginBottom: 20,
+    overflow: 'hidden', 
+  },
+  previewContainer: {
+    marginTop: 10,
+  },
+  previewImage: {
+    width: '100%',
+    height: 100,
+    marginTop: 5,
+    resizeMode: 'contain', 
   },
   buttonContainer: {
     marginTop: 20,

@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+// UserRegistrationForm.js
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, Image } from 'react-native';
 import axios from 'axios';
 import { useForm, Controller } from 'react-hook-form';
 import * as ImagePicker from 'expo-image-picker';
+import { Picker } from '@react-native-picker/picker';
+import countriesList from '../components/Countries';
+
 
 const UserRegistrationForm = ({ navigation }) => {
   const {
@@ -11,6 +15,7 @@ const UserRegistrationForm = ({ navigation }) => {
     formState: { errors },
   } = useForm();
   const [profileImage, setProfileImage] = useState(null);
+
 
   const handleImagePicker = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,6 +65,8 @@ const UserRegistrationForm = ({ navigation }) => {
         formData.append('profile_pics', profileImage);
       }
 
+      formData.append('country', data.country);
+
       const response = await axios.post('http://192.168.43.179:8000/api/register/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -77,100 +84,118 @@ const UserRegistrationForm = ({ navigation }) => {
       }
     }
   };
+
   return (
     <View style={styles.container}>
       <Text>User Registration</Text>
 
-<Controller
-  control={control}
-  render={({ field }) => (
-    <TextInput placeholder="Username" onChangeText={(text) => field.onChange(text)} />
-  )}
-  name="username"
-  rules={{ required: 'Username is required' }}
-/>
-{errors.username && <Text style={styles.errorText}>{errors.username.message}</Text>}
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput placeholder="Username" onChangeText={(text) => field.onChange(text)} />
+        )}
+        name="username"
+        rules={{ required: 'Username is required' }}
+      />
+      {errors.username && <Text style={styles.errorText}>{errors.username.message}</Text>}
+
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput
+            placeholder="Password"
+            secureTextEntry
+            onChangeText={(text) => field.onChange(text)}
+          />
+        )}
+        name="password"
+        rules={{ required: 'Password is required' }}
+      />
+      {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput placeholder="First Name" onChangeText={(text) => field.onChange(text)} />
+        )}
+        name="first_name"
+        rules={{ required: 'First Name is required' }}
+      />
+      {errors.first_name && <Text style={styles.errorText}>{errors.first_name.message}</Text>}
+
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput placeholder="Last Name" onChangeText={(text) => field.onChange(text)} />
+        )}
+        name="last_name"
+        rules={{ required: 'Last Name is required' }}
+      />
+      {errors.last_name && <Text style={styles.errorText}>{errors.last_name.message}</Text>}
+
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput
+            placeholder="Email"
+            onChangeText={(text) => field.onChange(text)}
+            keyboardType="email-address"
+          />
+        )}
+        name="email"
+        rules={{ required: 'Email is required' }}
+      />
+      {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput
+            placeholder="Phone Number"
+            onChangeText={(text) => field.onChange(text)}
+            keyboardType="numeric"
+          />
+        )}
+        name="phone_number"
+        rules={{ required: 'Phone Number is required' }}
+      />
+      {errors.phone_number && <Text style={styles.errorText}>{errors.phone_number.message}</Text>}
+
+      <Controller
+        control={control}
+        render={({ field }) => (
+          <TextInput placeholder="About" onChangeText={(text) => field.onChange(text)} />
+        )}
+        name="about"
+      />
+
+      <Button title="Choose Profile Picture" onPress={handleImagePicker} />
+
+      {profileImage && (
+        <View style={styles.previewContainer}>
+          <Text>Selected Profile Picture:</Text>
+          <Image source={{ uri: profileImage.uri }} style={styles.previewImage} />
+        </View>
+      )}
 
 <Controller
   control={control}
   render={({ field }) => (
-    <TextInput
-      placeholder="Password"
-      secureTextEntry
-      onChangeText={(text) => field.onChange(text)}
-    />
+    <Picker
+      selectedValue={field.value}
+      onValueChange={(itemValue) => field.onChange(itemValue)}
+      style={{ height: 40, width: '80%', backgroundColor: '#fafafa' }}
+    >
+      {countriesList.map((country) => (
+        <Picker.Item key={country} label={country} value={country} />
+      ))}
+    </Picker>
   )}
-  name="password"
-  rules={{ required: 'Password is required' }}
-/>
-{errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
-
-<Controller
-  control={control}
-  render={({ field }) => (
-    <TextInput placeholder="First Name" onChangeText={(text) => field.onChange(text)} />
-  )}
-  name="first_name"
-  rules={{ required: 'First Name is required' }}
-/>
-{errors.first_name && <Text style={styles.errorText}>{errors.first_name.message}</Text>}
-
-<Controller
-  control={control}
-  render={({ field }) => (
-    <TextInput placeholder="Last Name" onChangeText={(text) => field.onChange(text)} />
-  )}
-  name="last_name"
-  rules={{ required: 'Last Name is required' }}
-/>
-{errors.last_name && <Text style={styles.errorText}>{errors.last_name.message}</Text>}
-
-<Controller
-  control={control}
-  render={({ field }) => (
-    <TextInput
-      placeholder="Email"
-      onChangeText={(text) => field.onChange(text)}
-      keyboardType="email-address"
-    />
-  )}
-  name="email"
-  rules={{ required: 'Email is required' }}
-/>
-{errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
-
-<Controller
-  control={control}
-  render={({ field }) => (
-    <TextInput
-      placeholder="Phone Number"
-      onChangeText={(text) => field.onChange(text)}
-      keyboardType="numeric"
-    />
-  )}
-  name="phone_number"
-  rules={{ required: 'Phone Number is required' }}
-/>
-{errors.phone_number && <Text style={styles.errorText}>{errors.phone_number.message}</Text>}
-
-<Controller
-  control={control}
-  render={({ field }) => (
-    <TextInput placeholder="About" onChangeText={(text) => field.onChange(text)} />
-  )}
-  name="about"
+  name="country"
 />
 
-<Button title="Choose Profile Picture" onPress={handleImagePicker} />
 
-{profileImage && (
-  <View style={styles.previewContainer}>
-    <Text>Selected Profile Picture:</Text>
-    <Image source={{ uri: profileImage.uri }} style={styles.previewImage} />
-  </View>
-)}
-
-<Button title="Register" onPress={handleSubmit(onSubmit)} />
+      <Button title="Register" onPress={handleSubmit(onSubmit)} />
     </View>
   );
 };

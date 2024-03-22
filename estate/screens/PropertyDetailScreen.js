@@ -8,7 +8,7 @@ const PropertyDetailScreen = ({ route }) => {
   return (
     <ScrollView>
       <View>
-        <Text>Property Detail Screen</Text>
+       
         <PropertyDetail route={{ params: { propertyId } }} />
       </View>
     </ScrollView>

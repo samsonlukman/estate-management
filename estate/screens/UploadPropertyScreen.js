@@ -16,6 +16,7 @@ const UploadProperty = ({ navigation }) => {
     <View style={styles.container}>
       <Text>Select Property Type:</Text>
       <Button title="Apartment" onPress={() => handlePropertyType('apartment')} />
+
       <Button title="Land" onPress={() => handlePropertyType('land')} />
     </View>
   );
@@ -26,6 +27,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 5
   },
 });
 

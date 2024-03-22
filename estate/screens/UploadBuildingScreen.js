@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, Text, Switch, View, StyleSheet, Button, Alert, TextInput, Image } from 'react-native';
 import axios from 'axios';
-import { useForm, Controller } from 'react-hook-form';
+import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
+import countriesList from '../components/Countries';
 
 const propertyTypes = [
   { label: 'Sale', value: 'sale' },
@@ -51,6 +52,10 @@ const UploadBuildingScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
 
+  const [ownerId, setOwnerId] = useState(null);
+  const [profileImage, setProfileImage] = useState(null);
+  const [country, setCountry] = useState(countriesList[0]);
+
   const booleanFields = [
     { label: 'Swimming Pool', value: swimmingPool, setter: setSwimmingPool },
     { label: 'High-Speed Internet', value: highSpeedInternet, setter: setHighSpeedInternet },
@@ -60,8 +65,9 @@ const UploadBuildingScreen = ({ navigation }) => {
     { label: 'Garage', value: garage, setter: setGarage },
   ];
 
-  const [ownerId, setOwnerId] = useState(null);
-  const [profileImage, setProfileImage] = useState(null);
+  const countriesPickerItems = countriesList.map((country) => (
+    <Picker.Item key={country} label={country} value={country} />
+  ));
 
   const handleImagePicker = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -77,14 +83,12 @@ const UploadBuildingScreen = ({ navigation }) => {
       quality: 1,
     });
 
-    console.log(result);
-
     if (!result.cancelled) {
       const fileName = result.assets[0].uri.split('/').pop();
 
       setProfileImage({
         uri: result.assets[0].uri,
-        type: 'image/jpeg', // Set the correct MIME type for the image
+        type: 'image/jpeg',
         name: fileName,
       });
 
@@ -92,75 +96,69 @@ const UploadBuildingScreen = ({ navigation }) => {
     }
   };
 
-  // Fetch the logged-in user's information when the component mounts
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
-        // Make a request to your authentication system to get the user information
-        // Modify this URL to match your authentication endpoint
         const userInfoResponse = await axios.get('http://192.168.43.179:8000/api/user/');
-
-        // Set the owner ID based on the retrieved user information
-        console.log(userInfoResponse.data.id)
         setOwnerId(userInfoResponse.data.id);
       } catch (error) {
         console.error('Error fetching user information:', error.message);
       }
     };
 
-    // Call the function to fetch user information
     fetchUserInfo();
   }, []);
+
   const handleUpload = async () => {
     try {
-      // Fetch CSRF token
       const csrfResponse = await axios.get('http://192.168.43.179:8000/api/get-csrf-token/');
       const csrfToken = csrfResponse.data.csrf_token;
 
-      // Create a JSON object with the form data
-      const formData = {
-        property_owner: ownerId,
-        name,
-        price,
-        property_type: propertyType,
-        building_type: buildingType,
-        condition,
-        furnishing,
-        bedrooms: parseInt(bedrooms, 10),
-        bathrooms: parseInt(bathrooms, 10),
-        toilets: parseInt(toilets, 10),
-        swimming_pool: swimmingPool,  // Set boolean fields directly
-        highspeed_internet: highSpeedInternet,
-        gym,
-        dishwasher,
-        wifi,
-        garage,
-        // Append the image if available
-      if (profileImage) {
-        formData.append('image', profileImage);
-      }
-      };
+      const formData = new FormData();
 
-      // Make the API request to upload the building
+      formData.append('property_owner', ownerId);
+      formData.append('name', name);
+      formData.append('price', price);
+      formData.append('property_type', propertyType);
+      formData.append('building_type', buildingType);
+      formData.append('condition', condition);
+      formData.append('furnishing', furnishing);
+      formData.append('bedrooms', parseInt(bedrooms, 10));
+      formData.append('bathrooms', parseInt(bathrooms, 10));
+      formData.append('toilets', parseInt(toilets, 10));
+      formData.append('swimming_pool', swimmingPool);
+      formData.append('highspeed_internet', highSpeedInternet);
+      formData.append('gym', gym);
+      formData.append('dishwasher', dishwasher);
+      formData.append('wifi', wifi);
+      formData.append('garage', garage);
+      formData.append('country', country);
+
+      if (profileImage) {
+        formData.append('image', {
+          uri: profileImage.uri,
+          type: 'image/jpeg',
+          name: profileImage.name,
+        });
+      }
+
       const response = await axios.post('http://192.168.43.179:8000/api/upload/building/', formData, {
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'multipart/form-data',
           'X-CSRFToken': csrfToken,
         },
       });
 
-      // Handle success or navigate back as needed
       console.log('Building uploaded successfully:', response.data);
-      // navigation.goBack();
+      Alert.alert('Property Added Successfully');
+      navigation.navigate('Home');
     } catch (error) {
-      // Log the error response
       console.error('Error uploading building:', error.message, error.response?.data);
 
-      // Display the error details if available
       if (error.response?.data && error.response.data.details) {
         Alert.alert('Error', JSON.stringify(error.response.data.details, null, 2));
       } else {
-        Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+        Alert.alert('Error', 'An unexpected error occurred. Please try again. Did you fill all the fields?');
       }
     }
   };
@@ -170,7 +168,7 @@ const UploadBuildingScreen = ({ navigation }) => {
       <Text style={styles.label}>{item.label}</Text>
       <Switch
         value={item.value}
-        onValueChange={(newValue) => item.setter(newValue)} // Handle onValueChange to set state
+        onValueChange={(newValue) => item.setter(newValue)}
       />
     </View>
   );
@@ -209,13 +207,26 @@ const UploadBuildingScreen = ({ navigation }) => {
       {renderTextField('Bedrooms', bedrooms, setBedrooms)}
       {renderTextField('Bathrooms', bathrooms, setBathrooms)}
       {renderTextField('Toilets', toilets, setToilets)}
+
       {booleanFields.map(renderBooleanField)}
+
       {renderPickerField('Property Type', propertyType, setPropertyType, propertyTypes)}
       {renderPickerField('Building Type', buildingType, setBuildingType, buildingTypes)}
       {renderPickerField('Condition', condition, setCondition, conditions)}
       {renderPickerField('Furnishing', furnishing, setFurnishing, furnishings)}
-      {/* Add other fields as needed */}
-      <Button title="Choose Profile Picture" onPress={handleImagePicker} />
+
+      <View style={styles.pickerFieldContainer}>
+        <Text style={styles.label}>Country</Text>
+        <Picker
+          selectedValue={country}
+          onValueChange={(value) => setCountry(value)}
+          style={styles.picker}
+        >
+          {countriesPickerItems}
+        </Picker>
+      </View>
+
+      <Button title="Choose Image(s)" onPress={handleImagePicker} />
 
       {profileImage && (
         <View style={styles.previewContainer}>
@@ -233,16 +244,25 @@ const UploadBuildingScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 5
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    marginTop: 5,
   },
   booleanFieldContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 15,
+    borderColor: 'gray',
+    borderWidth: 1,
   },
   pickerFieldContainer: {
     marginBottom: 15,
+    borderColor: 'gray',
+    borderWidth: 1,
   },
   textFieldContainer: {
     marginBottom: 15,
@@ -263,15 +283,6 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 20,
-  },
-  previewContainer: {
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: 100,
-    height: 100,
-    marginTop: 5,
   },
 });
 
