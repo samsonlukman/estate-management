@@ -79,7 +79,7 @@ const SavedLands = () => {
     <View style={styles.container}>
       {user && user.isAuthenticated ? (
         <>
-          <Text style={styles.title}>Saved Lands</Text>
+        
           <FlatList
             data={savedProperties}
             keyExtractor={(item) => item.id.toString()}

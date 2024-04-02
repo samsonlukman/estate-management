@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#FFC46C',
+    backgroundColor: 'white',
   },
   separator: {
     borderBottomWidth: 1,

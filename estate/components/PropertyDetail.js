@@ -6,12 +6,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import Carousel, { Pagination } from 'react-native-snap-carousel';
 
 const PropertyDetail = ({ route }) => {
   const { user } = useAuth();
   const propertyId = route.params.propertyId;
   const [property, setProperty] = useState(null);
+  const [images, setImages] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const navigation = useNavigation();
 
@@ -22,14 +25,27 @@ const PropertyDetail = ({ route }) => {
   useEffect(() => {
     const fetchPropertyDetail = async () => {
       try {
-        const response = await axios.get(`http://192.168.43.179:8000/api/buildings/${propertyId}`);
-        setProperty(response.data);
+        const propertyResponse = await axios.get(`http://192.168.43.179:8000/api/buildings/${propertyId}`);
+        setProperty(propertyResponse.data);
       } catch (error) {
         console.error('Error fetching property detail:', error);
       }
     };
 
+    const fetchBuildingImages = async () => {
+      try {
+        const imagesResponse = await axios.get(`http://192.168.43.179:8000/api/building-images/?building=${propertyId}`);
+        const filteredImages = imagesResponse.data
+          .filter(image => image.building === propertyId)
+          .map(image => image.image);
+        setImages(filteredImages);
+      } catch (error) {
+        console.error('Error fetching building images:', error);
+      }
+    };
+
     fetchPropertyDetail();
+    fetchBuildingImages();
   }, [propertyId]);
 
   const [fontsLoaded, fontError] = useFonts({
@@ -37,17 +53,6 @@ const PropertyDetail = ({ route }) => {
     'Roboto-Regular': require('../assets/fonts/Roboto-Regular.ttf'),
     'Roboto-Bold': require('../assets/fonts/Roboto-Bold.ttf'),
   });
-
-  
-  const renderAmenities = (amenity, name) => {
-    const iconName = amenity ? 'check' : 'times';
-    return (
-      <Text style={styles.propertyDetailLabel} key={name}>
-        <Icon name={iconName} size={16} style={{ marginRight: 5 }} />
-        {name}: {amenity ? 'Yes' : 'No'}
-      </Text>
-    );
-  };
 
   useEffect(() => {
     const handleFontLoading = async () => {
@@ -67,7 +72,7 @@ const PropertyDetail = ({ route }) => {
         <TouchableOpacity onPress={toggleModal}>
           <View style={styles.contactUserButton}>
             <Icon name="phone" size={12} style={{ marginRight: 5 }} />
-            <Text>Contact user</Text>
+            {renderContactUserSection()}
           </View>
         </TouchableOpacity>
       );
@@ -110,21 +115,47 @@ const PropertyDetail = ({ route }) => {
     );
   };
 
+  const renderAmenities = (amenity, name) => {
+    const iconName = amenity ? 'check' : 'times';
+    return (
+      <Text style={styles.propertyDetailLabel} key={name}>
+        <Icon name={iconName} size={16} style={{ marginRight: 5 }} />
+        {name}: {amenity ? 'Yes' : 'No'}
+      </Text>
+    );
+  };
+
   const renderPropertyInfo = () => {
     if (!property) return null;
 
     return (
       <View>
-        <Image source={{ uri: property.image }} style={styles.propertyImage} />
+        <Carousel
+          data={images}
+          renderItem={({ item }) => (
+            <Image source={{ uri: item }} style={styles.propertyImage} />
+          )}
+          sliderWidth={350}
+          itemWidth={350}
+          onSnapToItem={(index) => setActiveImageIndex(index)}
+        />
+        <Pagination
+          dotsLength={images.length}
+          activeDotIndex={activeImageIndex}
+          containerStyle={styles.paginationContainer}
+          dotStyle={styles.paginationDot}
+          inactiveDotOpacity={0.4}
+          inactiveDotScale={0.6}
+        />
         <Text style={styles.propertyTitle}>{property.name}</Text>
 
         <View style={styles.propertyDetails}>
           <Text style={styles.propertyDetailLabel}>
             <Icon name="user" size={16} style={{ marginRight: 5 }} /> Owner: {property.property_owner.username}
           </Text>
-
-          {renderContactUserSection()}
-
+          <TouchableOpacity onPress={toggleModal}>
+            <Text style={styles.contactUserButton}>Contact user</Text>
+          </TouchableOpacity>
           <Text style={styles.propertyDetailLabel}>
             <Icon name={property.property_type === 'sale' ? 'home' : 'home'} size={16} style={{ marginRight: 5 }} /> Price: {property.price}
           </Text>
@@ -157,7 +188,6 @@ const PropertyDetail = ({ route }) => {
           {renderAmenities(property.dishwasher, 'Dishwasher')}
           {renderAmenities(property.wifi, 'Wifi')}
           {renderAmenities(property.garage, 'Garage')}
-
         </View>
       </View>
     );
@@ -168,15 +198,16 @@ const PropertyDetail = ({ route }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <View>
       {renderPropertyInfo()}
       {renderUserInfoModal()}
     </View>
   );
 };
 
+
 const styles = StyleSheet.create({
-  container: {
+   container: {
     flex: 1,
     padding: 20,
     backgroundColor: '#FFC46C',
@@ -186,6 +217,7 @@ const styles = StyleSheet.create({
     height: 250,
     resizeMode: 'cover',
     borderRadius: 8,
+    objectFit: 'contain'
   },
   propertyTitle: {
     fontSize: 22,
@@ -197,13 +229,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 20,
+    padding: 10
   },
   propertyDetailLabel: {
     width: '48%', // Adjusted width for better spacing
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    fontFamily: 'Roboto-Bold',
+    fontFamily: 'Roboto-Regular',
   },
   loginButton: {
     color: 'blue',
@@ -291,6 +324,17 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto-Regular',
     marginTop: 10
   },
+  paginationContainer: {
+    paddingVertical: 6,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
 });
 
 export default PropertyDetail;
+

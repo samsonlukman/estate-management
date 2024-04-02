@@ -53,7 +53,7 @@ const UploadBuildingScreen = ({ navigation }) => {
   const [price, setPrice] = useState('');
 
   const [ownerId, setOwnerId] = useState(null);
-  const [profileImage, setProfileImage] = useState(null);
+  const [BuildingImages, setBuildingImages] = useState([]);
   const [country, setCountry] = useState(countriesList[0]);
 
   const booleanFields = [
@@ -78,21 +78,22 @@ const UploadBuildingScreen = ({ navigation }) => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
+      allowsMultipleSelection: true
     });
 
     if (!result.cancelled) {
-      const fileName = result.assets[0].uri.split('/').pop();
-
-      setProfileImage({
-        uri: result.assets[0].uri,
-        type: 'image/jpeg',
-        name: fileName,
+      const selectedImages = result.assets.map((asset) => {
+        const fileName = asset.uri.split('/').pop();
+        return {
+          uri: asset.uri,
+          type: 'image/jpeg', 
+          name: fileName,
+        };
       });
 
-      console.log('Selected Profile Picture:', fileName);
+      setBuildingImages([...BuildingImages, ...selectedImages]);
     }
   };
 
@@ -134,13 +135,13 @@ const UploadBuildingScreen = ({ navigation }) => {
       formData.append('garage', garage);
       formData.append('country', country);
 
-      if (profileImage) {
-        formData.append('image', {
-          uri: profileImage.uri,
+      BuildingImages.forEach((image, index) => {
+        formData.append(`image${index}`, {
+          uri: image.uri,
           type: 'image/jpeg',
-          name: profileImage.name,
+          name: image.uri.split('/').pop(),
         });
-      }
+      });
 
       const response = await axios.post('http://192.168.43.179:8000/api/upload/building/', formData, {
         headers: {
@@ -226,14 +227,16 @@ const UploadBuildingScreen = ({ navigation }) => {
         </Picker>
       </View>
 
-      <Button title="Choose Image(s)" onPress={handleImagePicker} />
+      <View style={styles.imageContainer}>
+        <Button title="Choose Building Image(s)" onPress={handleImagePicker} />
+        {BuildingImages.map((image, index) => (
+          <View key={index} style={styles.previewContainer}>
+            <Text>Selected Building Image {index + 1}:</Text>
+            <Image source={{ uri: image.uri }} style={styles.previewImage} />
+          </View>
+        ))}
+      </View>
 
-      {profileImage && (
-        <View style={styles.previewContainer}>
-          <Text>Selected Profile Picture:</Text>
-          <Image source={{ uri: profileImage.uri }} style={styles.previewImage} />
-        </View>
-      )}
       <View style={styles.buttonContainer}>
         <Button title="Upload Property" onPress={handleUpload} />
       </View>
@@ -246,10 +249,18 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 5
   },
+  imageContainer: {
+    marginBottom: 20,
+    overflow: 'hidden', 
+  },
+  previewContainer: {
+    marginTop: 10,
+  },
   previewImage: {
-    width: 100,
+    width: '100%',
     height: 100,
     marginTop: 5,
+    resizeMode: 'contain', 
   },
   booleanFieldContainer: {
     flexDirection: 'row',

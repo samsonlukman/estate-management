@@ -8,6 +8,7 @@ const SavedBuildings = () => {
   const [savedProperties, setSavedProperties] = useState([]);
   const [buildingDetails, setBuildingDetails] = useState({});
   const [loggedInUserId, setLoggedInUserId] = useState(null);
+  const [buildingImages, setBuildingImages] = useState({});
   const navigation = useNavigation();
   const { user } = useAuth(); // Assuming user object contains isAuthenticated property
 
@@ -48,8 +49,23 @@ const SavedBuildings = () => {
         details[buildingId] = response.data;
       }
       setBuildingDetails(details);
+      fetchBuildingImages(buildingIds); // Fetch images after fetching details
     } catch (error) {
       console.error('Error fetching building details:', error);
+    }
+  };
+
+  const fetchBuildingImages = async (buildingIds) => {
+    try {
+      const images = {};
+      for (const buildingId of buildingIds) {
+        const response = await axios.get(`http://192.168.43.179:8000/api/building-images/?building=${buildingId}`);
+        const buildingImages = response.data.map(image => image.image);
+        images[buildingId] = buildingImages;
+      }
+      setBuildingImages(images);
+    } catch (error) {
+      console.error('Error fetching building images:', error);
     }
   };
 
@@ -59,13 +75,14 @@ const SavedBuildings = () => {
 
   const renderSavedPropertyItem = ({ item }) => {
     const building = buildingDetails[item.building];
-    if (!building) {
-      return null; // Render nothing if building details are not available yet
+    const images = buildingImages[item.building];
+    if (!building || !images) {
+      return null; // Render nothing if building details or images are not available yet
     }
     return (
       <TouchableOpacity onPress={() => navigateToPropertyDetail(item.building)}>
         <View style={styles.savedPropertyItem}>
-          <Image source={{ uri: building.image }} style={styles.propertyImage} />
+          <Image source={{ uri: images[0] }} style={styles.propertyImage} />
           <Text style={styles.savedPropertyTitle}>{building.name}</Text>
           <Text>Price: {building.price}</Text>
           <Text>Country: {building.country}</Text>
@@ -79,7 +96,6 @@ const SavedBuildings = () => {
     <View style={styles.container}>
       {user && user.isAuthenticated ? (
         <>
-          <Text style={styles.title}>Saved Properties</Text>
           <FlatList
             data={savedProperties}
             keyExtractor={(item) => item.id.toString()}

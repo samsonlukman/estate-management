@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import axios from 'axios';
-import Icon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import Carousel, { Pagination } from 'react-native-snap-carousel';
 
 const PropertyDisplay = () => {
   const [properties, setProperties] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [csrfToken, setCsrfToken] = useState(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const navigation = useNavigation();
   const { user, logout } = useAuth();
 
@@ -26,14 +28,29 @@ const PropertyDisplay = () => {
   }, []);
 
   useEffect(() => {
-    axios
-      .get('http://192.168.43.179:8000/api/buildings/')
-      .then((response) => {
-        setProperties(response.data);
-      })
-      .catch((error) => {
-        console.error('Error fetching properties:', error);
-      });
+    const fetchBuildingsAndImages = async () => {
+      try {
+        const buildingResponse = await axios.get('http://192.168.43.179:8000/api/buildings/');
+        const buildingImagesResponse = await axios.get('http://192.168.43.179:8000/api/building-images/'); 
+
+        const propertiesWithImages = buildingResponse.data.map((buildingItem) => {
+          const relatedImages = buildingImagesResponse.data.filter(
+            (image) => image.building === buildingItem.id
+          );
+
+          return {
+            ...buildingItem,
+            images: relatedImages.map((imageItem) => imageItem.image), 
+          };
+        });
+
+        setProperties(propertiesWithImages);
+      } catch (error) {
+        console.error('Error fetching buildings and images:', error);
+      }
+    };
+
+    fetchBuildingsAndImages(); 
 
     if (user && user.isAuthenticated) {
       axios
@@ -65,45 +82,62 @@ const PropertyDisplay = () => {
         } else {
           await axios.post(
             'http://192.168.43.179:8000/api/saved-properties/',
-            { building: propertyId, user: loggedInUser.id  },
+            { building: propertyId, user: loggedInUser.id },
             { headers: { 'X-CSRFToken': csrfToken } }
           );
         }
         setIsSaved(!isSaved);
       } catch (error) {
-        console.error('Error saving/unsaving property:', error.message);
+        Alert.alert('Alread Saved')
       }
     };
 
     return (
       <TouchableOpacity onPress={handleToggleSaveProperty}>
-        <Icon name='heart' size={40} color='red' />
+        <Icon name='heart' size={20} color='red' />
       </TouchableOpacity>
     );
   };
 
-  const renderPropertyItem = ({ item }) => {
-    return (
-      <TouchableOpacity onPress={() => navigateToPropertyDetail(item.id)}>
-        <View style={styles.propertyItem}>
-          <Image source={{ uri: item.image }} style={styles.propertyImage} />
-          <View style={styles.propertyDetails}>
-            <View style={styles.rowContainer}>
-              <Text style={styles.propertyTitle}>{item.name}</Text>
-              {user && user.isAuthenticated && (
-                <View style={styles.iconContainer}>
-                  <SaveUnsaveButton propertyId={item.id} />
-                </View>
-              )}
-            </View>
-            <Text style={styles.propertyPrice}>Price: ${item.price}</Text>    
-            <Text style={styles.propertyOwner}>Country: {item.country}</Text>
-            <Text style={styles.propertyOwner}>Type: {item.building_type}</Text>
+  const renderCarouselItem = ({ item }) => (
+    <Image source={{ uri: item }} style={styles.buildingImage} />
+  );
+
+  const renderPropertyItem = ({ item }) => (
+      <View style={styles.buildingItem}>
+        <View style={styles.carouselContainer}>
+          <Carousel
+            data={item.images}
+            renderItem={renderCarouselItem}
+            sliderWidth={350} // Adjust as needed
+            itemWidth={350} // Adjust as needed
+            onSnapToItem={(index) => setActiveImageIndex(index)}
+          />
+        </View> 
+        <Pagination
+          dotsLength={item.images.length}
+          activeDotIndex={activeImageIndex}
+          containerStyle={styles.paginationContainer}
+          dotStyle={styles.paginationDot}
+          inactiveDotOpacity={0.4}
+          inactiveDotScale={0.6}
+        /> 
+        <TouchableOpacity onPress={() => navigateToPropertyDetail(item.id)}>
+        <View style={styles.propertyDetails}>
+          <View style={styles.rowContainer}> 
+            <Text style={styles.propertyTitle}>{item.name}</Text>
+            {user && user.isAuthenticated && (
+              <View style={styles.iconContainer}>
+                <SaveUnsaveButton propertyId={item.id} />
+              </View>
+            )}
           </View>
+          <Text style={styles.propertyPrice}>Price: ${item.price}</Text>
+          <Text style={styles.propertyCountry}>Country: {item.country}</Text>
         </View>
-      </TouchableOpacity>
-    );
-  };
+        </TouchableOpacity>
+      </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -120,56 +154,73 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f2f2f2',
-    padding: 20,
+    padding: 10,
   },
-  propertyItem: {
+  buildingItem: {
     marginBottom: 20,
+  backgroundColor: '#FFC46C',  
     borderRadius: 8,
     shadowColor: '#ccc',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 3,
-    backgroundColor: '#FFC46C',
-    
-  },
-  propertyImage: {
+    elevation: 3, 
     width: '100%',
-    height: 180,
-    resizeMode: 'cover',
-    borderRadius: 8,
-    borderBottomLeftRadius: 80,
+    borderBottomLeftRadius: 60,
+    paddingBottom: 20
+    
+
   },
-  propertyDetails: {
-    padding: 10,
+  carouselContainer: {
+    width: '100%',
+    height: 200, 
+  },
+  buildingImage: { 
+    width: '100%',
+    height: '100%', 
+    resizeMode: 'cover', 
+    borderBottomLeftRadius: 60, // Add these lines
+  }, 
+  paginationContainer: {
+    paddingVertical: 2, 
+  },
+  paginationDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 4,
+    marginHorizontal: 3, 
+    backgroundColor: 'rgba(0, 0, 0, 0.8)', 
   },
   rowContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start', // Keep icons left-aligned
+    alignItems: 'flex-start', 
   },
   iconContainer: {
-    marginLeft: 8, // Adjust the margin as needed
+    marginLeft: 8, 
   },
+  propertyDetails: { 
+    paddingLeft: 40
+  }, 
   propertyTitle: {
-    fontSize: 14,
+    fontSize: 16, 
     fontWeight: 'bold',
-    marginBottom: 5,
-    flexShrink: 1, // Shrink if needed
-    maxWidth: '80%', // Optional - limit title width 
+  
+    flexShrink: 1, 
+    maxWidth: '80%', 
   },
   propertyPrice: {
-    fontSize: 16, 
+    fontSize: 12,
+    top: 5
+  },
+  propertyCountry: {
+    fontSize: 12, 
+    
   },
   propertyOwner: {
     fontSize: 14,
   },
-  ownerProfileImage: {
-    width: 50, 
-    height: 50, 
-    borderRadius: 25, 
-    marginTop: 5,
-  },
 });
 
 export default PropertyDisplay;
+

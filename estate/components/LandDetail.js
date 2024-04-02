@@ -4,6 +4,7 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import Carousel, { Pagination } from 'react-native-snap-carousel';
 
 const PropertyDetail = ({ route }) => {
   const [property, setProperty] = useState(null);
@@ -11,6 +12,8 @@ const PropertyDetail = ({ route }) => {
   const propertyId = route.params.propertyId;
   const navigation = useNavigation();
   const [contactModalVisible, setContactModalVisible] = useState(false);
+  const [images, setImages] = useState([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
     const fetchPropertyDetail = async () => {
@@ -24,7 +27,20 @@ const PropertyDetail = ({ route }) => {
       }
     };
 
+    const fetchLandImages = async () => {
+      try {
+        const imagesResponse = await axios.get(`http://192.168.43.179:8000/api/land-images/?land=${propertyId}`);
+        const filteredImages = imagesResponse.data
+          .filter(image => image.land === propertyId)
+          .map(image => image.image);
+        setImages(filteredImages);
+      } catch (error) {
+        console.error('Error fetching land images:', error);
+      }
+    };
+
     fetchPropertyDetail();
+    fetchLandImages();
   }, [propertyId]);
 
   const handleContactUser = () => {
@@ -39,7 +55,9 @@ const PropertyDetail = ({ route }) => {
     { key: 'country', label: 'Country:', value: property?.country },
     { key: 'phoneNumber', label: 'Phone Number:', value: property?.owner.phone_number },
     { key: 'datePosted', label: 'Date Posted:', value: property?.date_posted?.substring(0, 10) },
+    { key: 'price', label: 'Price', value: property?.price},
     { key: 'description', label: 'Description:', value: property?.description },
+
   ];
 
   const renderPropertyInfoItem = ({ item }) => {
@@ -71,8 +89,24 @@ const PropertyDetail = ({ route }) => {
   };
 
   return (
-    <View style={styles.mainContainer}>
-      <Image source={{ uri: property?.image }} style={styles.propertyImage} />
+    <View>
+       <Carousel
+          data={images}
+          renderItem={({ item }) => (
+            <Image source={{ uri: item }} style={styles.propertyImage} />
+          )}
+          sliderWidth={350}
+          itemWidth={350}
+          onSnapToItem={(index) => setActiveImageIndex(index)}
+        />
+        <Pagination
+          dotsLength={images.length}
+          activeDotIndex={activeImageIndex}
+          containerStyle={styles.paginationContainer}
+          dotStyle={styles.paginationDot}
+          inactiveDotOpacity={0.4}
+          inactiveDotScale={0.6}
+        />
       <Text style={styles.propertyTitle}>{property?.name}</Text>
       <FlatList
         data={propertyInfoData}
@@ -117,6 +151,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 250,
     resizeMode: 'cover',
+    objectFit: 'contain',
     borderRadius: 8,
     marginBottom: 20,
   },
@@ -124,11 +159,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 10,
+    marginTop: -20,
+    paddingLeft: 10
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 5,
+    paddingLeft: 10
   },
   detailIcon: {
     marginRight: 5,
@@ -174,6 +212,16 @@ const styles = StyleSheet.create({
   modalCloseText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  paginationContainer: {
+    paddingVertical: 6,
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
 });
 

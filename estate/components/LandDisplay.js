@@ -94,7 +94,7 @@ const LandDisplay = () => {
 
     return (
       <TouchableOpacity onPress={handleToggleSaveProperty}>
-        <Icon name='heart' size={40} color='red' />
+        <Icon name='heart' size={20} color='red' />
       </TouchableOpacity>
     );
   };
@@ -134,7 +134,7 @@ const LandDisplay = () => {
             )}
           </View>
           <Text style={styles.propertyPrice}>Price: ${item.price}</Text>
-          <Text style={styles.propertyOwner}>Country: {item.country}</Text>
+          <Text style={styles.propertyCountry}>Country: {item.country}</Text>
         </View>
         </TouchableOpacity>
       </View>
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f2f2f2',
-    padding: 20,
+    padding: 10,
   },
   landItem: {
     marginBottom: 20,
@@ -167,7 +167,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 3, 
-    width: '100%' // Ensure the container is full width 
+    width: '100%', // Ensure the container is full width 
+    borderBottomLeftRadius: 60,
+    paddingBottom: 20
   },
   carouselContainer: {
     width: '100%',
@@ -184,8 +186,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6, 
   },
   paginationDot: {
-    width: 8,
-    height: 8,
+    width: 4,
+    height: 4,
     borderRadius: 4,
     marginHorizontal: 3, 
     backgroundColor: 'rgba(0, 0, 0, 0.8)', 
@@ -199,17 +201,21 @@ const styles = StyleSheet.create({
     marginLeft: 8, 
   },
   propertyDetails: { 
-    padding: 5,
+    paddingLeft: 40
   }, 
   propertyTitle: {
     fontSize: 16, 
     fontWeight: 'bold',
-    marginBottom: 5,
+    
     flexShrink: 1, 
     maxWidth: '80%', 
   },
   propertyPrice: {
-    fontSize: 16, 
+    fontSize: 12, 
+    top: 5
+  },
+  propertyCountry: {
+    fontSize: 12, 
   },
   propertyOwner: {
     fontSize: 14,

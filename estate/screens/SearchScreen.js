@@ -36,15 +36,19 @@ const SearchScreen = ({ navigation }) => {
 
   const handleSearch = async () => {
     try {
+      // Clear previous search results
+      setSearchResults([]);
+  
       const buildingResponse = await axios.get(`http://192.168.43.179:8000/api/buildingss/?search=${searchQuery}&min_price=${minPrice}&max_price=${maxPrice}&country=${country}`);
       setBuildingResults(buildingResponse.data);
-
+  
       const landResponse = await axios.get(`http://192.168.43.179:8000/api/landss/?search=${searchQuery}&min_price=${minPrice}&max_price=${maxPrice}&country=${country}`);
       setLandResults(landResponse.data);
     } catch (error) {
       console.error('Error fetching search results:', error);
     }
   };
+  
 
   const navigateToDetails = (item) => {
     const detailScreen = item.category === 'building' ? 'PropertyDetail' : 'Land Detail';
@@ -116,10 +120,16 @@ const SearchScreen = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={searchResults}
-        renderItem={renderResultItem}
-        keyExtractor={(item) => item.id.toString()}
-      />
+  data={searchResults}
+  renderItem={renderResultItem}
+  keyExtractor={(item) => item.id.toString()}
+  ListEmptyComponent={() => (
+    <View style={styles.noResultContainer}>
+      <Text style={styles.noResultText}>No result found</Text>
+    </View>
+  )}
+/>
+
     </View>
   );
 };
