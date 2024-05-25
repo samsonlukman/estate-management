@@ -28,31 +28,7 @@ const PropertyDisplay = () => {
   }, []);
 
   useEffect(() => {
-    const fetchBuildingsAndImages = async () => {
-      try {
-        const buildingResponse = await axios.get('http://192.168.43.179:8000/api/buildings/');
-        const buildingImagesResponse = await axios.get('http://192.168.43.179:8000/api/building-images/'); 
-
-        const propertiesWithImages = buildingResponse.data.map((buildingItem) => {
-          const relatedImages = buildingImagesResponse.data.filter(
-            (image) => image.building === buildingItem.id
-          );
-
-          return {
-            ...buildingItem,
-            images: relatedImages.map((imageItem) => imageItem.image), 
-          };
-        });
-
-        setProperties(propertiesWithImages);
-      } catch (error) {
-        console.error('Error fetching buildings and images:', error);
-      }
-    };
-
-    fetchBuildingsAndImages(); 
-
-    if (user && user.isAuthenticated) {
+    if (csrfToken && user && user.isAuthenticated) {
       axios
         .get('http://192.168.43.179:8000/api/user/', {
           headers: {
@@ -63,10 +39,42 @@ const PropertyDisplay = () => {
           setLoggedInUser(response.data);
         })
         .catch((error) => {
-          console.error('Error fetching user details:', error);
+          console.error('Error fetching user details:', error.response ? error.response.data : error.message);
         });
     }
-  }, [user, csrfToken]);
+  }, [csrfToken, user]);
+
+  useEffect(() => {
+    const fetchBuildingsAndImages = async () => {
+      if (loggedInUser) {
+        try {
+          const buildingResponse = await axios.get('http://192.168.43.179:8000/api/buildings/');
+          const buildingImagesResponse = await axios.get('http://192.168.43.179:8000/api/building-images/');
+
+          const filteredBuildings = buildingResponse.data.filter(
+            (building) => building.country === loggedInUser.country
+          );
+
+          const propertiesWithImages = filteredBuildings.map((buildingItem) => {
+            const relatedImages = buildingImagesResponse.data.filter(
+              (image) => image.building === buildingItem.id
+            );
+
+            return {
+              ...buildingItem,
+              images: relatedImages.map((imageItem) => imageItem.image),
+            };
+          });
+
+          setProperties(propertiesWithImages);
+        } catch (error) {
+          console.error('Error fetching buildings and images:', error.response ? error.response.data : error.message);
+        }
+      }
+    };
+
+    fetchBuildingsAndImages();
+  }, [loggedInUser]);
 
   const navigateToPropertyDetail = (propertyId) => {
     navigation.navigate('PropertyDetail', { propertyId });
@@ -132,7 +140,7 @@ const PropertyDisplay = () => {
               </View>
             )}
           </View>
-          <Text style={styles.propertyPrice}>Price: ${item.price}</Text>
+          <Text style={styles.propertyPrice}>Price: {item.currency}{item.price}</Text>
           <Text style={styles.propertyCountry}>Country: {item.country}</Text>
         </View>
         </TouchableOpacity>

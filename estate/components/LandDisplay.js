@@ -28,31 +28,7 @@ const LandDisplay = () => {
   }, []);
 
   useEffect(() => {
-    const fetchLandsAndImages = async () => {
-      try {
-        const landResponse = await axios.get('http://192.168.43.179:8000/api/land/');
-        const landImagesResponse = await axios.get('http://192.168.43.179:8000/api/land-images/'); 
-
-        const propertiesWithImages = landResponse.data.map((landItem) => {
-          const relatedImages = landImagesResponse.data.filter(
-            (image) => image.land === landItem.id
-          );
-
-          return {
-            ...landItem,
-            images: relatedImages.map((imageItem) => imageItem.image), 
-          };
-        });
-
-        setProperties(propertiesWithImages);
-      } catch (error) {
-        console.error('Error fetching lands and images:', error);
-      }
-    };
-
-    fetchLandsAndImages(); 
-
-    if (user && user.isAuthenticated) {
+    if (csrfToken && user && user.isAuthenticated) {
       axios
         .get('http://192.168.43.179:8000/api/user/', {
           headers: {
@@ -63,10 +39,42 @@ const LandDisplay = () => {
           setLoggedInUser(response.data);
         })
         .catch((error) => {
-          console.error('Error fetching user details:', error);
+          console.error('Error fetching user details:', error.response ? error.response.data : error.message);
         });
     }
-  }, [user, csrfToken]);
+  }, [csrfToken, user]);
+
+  useEffect(() => {
+    const fetchLandsAndImages = async () => {
+      if (loggedInUser) {
+        try {
+          const landResponse = await axios.get('http://192.168.43.179:8000/api/land/');
+          const landImagesResponse = await axios.get('http://192.168.43.179:8000/api/land-images/');
+
+          const filteredLands = landResponse.data.filter(
+            (land) => land.country === loggedInUser.country
+          );
+
+          const propertiesWithImages = filteredLands.map((landItem) => {
+            const relatedImages = landImagesResponse.data.filter(
+              (image) => image.land === landItem.id
+            );
+
+            return {
+              ...landItem,
+              images: relatedImages.map((imageItem) => imageItem.image),
+            };
+          });
+
+          setProperties(propertiesWithImages);
+        } catch (error) {
+          console.error('Error fetching lands and images:', error.response ? error.response.data : error.message);
+        }
+      }
+    };
+
+    fetchLandsAndImages();
+  }, [loggedInUser]);
 
   const navigateToPropertyDetail = (propertyId) => {
     navigation.navigate('Land Detail', { propertyId });
@@ -133,7 +141,7 @@ const LandDisplay = () => {
               </View>
             )}
           </View>
-          <Text style={styles.propertyPrice}>Price: ${item.price}</Text>
+          <Text style={styles.propertyPrice}>Price: {item.currency}{item.price}</Text>
           <Text style={styles.propertyCountry}>Country: {item.country}</Text>
         </View>
         </TouchableOpacity>
